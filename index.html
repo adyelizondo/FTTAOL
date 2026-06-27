@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTTA Online — Global Reach Over Time</title>
+
+<!-- ── Embed signals: make this page natively embeddable in Canva (via Iframely) ── -->
+<!-- Open Graph -->
+<meta property="og:title" content="FTTA Online — Global Reach Over Time">
+<meta property="og:description" content="Cumulative enrollment intensity by country, 2010–present.">
+<meta property="og:type" content="video.other">
+<meta property="og:url" content="https://adyelizondo.github.io/FTTAOL/">
+<meta property="og:image" content="https://adyelizondo.github.io/FTTAOL/preview.png">
+<!-- Twitter "player" card — tells embedders this page is a live interactive player -->
+<meta name="twitter:card" content="player">
+<meta name="twitter:title" content="FTTA Online — Global Reach Over Time">
+<meta name="twitter:description" content="Cumulative enrollment intensity by country, 2010–present.">
+<meta name="twitter:image" content="https://adyelizondo.github.io/FTTAOL/preview.png">
+<meta name="twitter:player" content="https://adyelizondo.github.io/FTTAOL/">
+<meta name="twitter:player:width" content="1280">
+<meta name="twitter:player:height" content="720">
+<!-- Iframely-specific player hint -->
+<link rel="iframely player" href="https://adyelizondo.github.io/FTTAOL/" media="(aspect-ratio: 1280/720)">
+<!-- oEmbed discovery (points to the static JSON file alongside this page) -->
+<link rel="alternate" type="application/json+oembed" href="https://adyelizondo.github.io/FTTAOL/oembed.json" title="FTTA Online — Global Reach Over Time">
+<!-- ──────────────────────────────────────────────────────────────────────────── -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    overflow-x: hidden;
+  }
+  
+  .header {
+    text-align: center;
+    padding: 28px 20px 8px;
+  }
+  
+  .header h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: #1a2a3a;
+  }
+  
+  .header .subtitle {
+    font-size: 0.85rem;
+    color: #5a6a7a;
+    margin-top: 4px;
+    font-weight: 300;
+  }
+  
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 16px 20px 8px;
+  }
+  
+  .stat {
+    text-align: center;
+  }
+  
+  .stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transition: all 0.5s ease;
+  }
+  
+  .stat-value.highlight {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #5a6a80;
+    margin-top: 2px;
+  }
+  
+  .map-and-list {
+    display: flex;
+    max-width: 1400px;
+    margin: 0 auto;
+    gap: 0;
+    padding: 0 20px;
+  }
+
+  #map-container {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+  }
+
+  .country-list-panel {
+    width: 220px;
+    flex-shrink: 0;
+    padding: 8px 0 8px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .country-list-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #f57c00;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(245, 124, 0, 0.25);
+  }
+
+  .country-list-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: #e68900;
+    background: rgba(255, 152, 0, 0.08);
+    border-left: 3px solid #ff9800;
+    animation: fadeIn 0.5s ease;
+    white-space: nowrap;
+  }
+
+  .no-new-message {
+    font-size: 0.82rem;
+    color: #8a95a5;
+    font-style: italic;
+    padding: 8px;
+  }
+  
+  svg {
+    width: 100%;
+    height: auto;
+  }
+  
+  .country {
+    stroke: #c8d0dc;
+    stroke-width: 0.4;
+    transition: fill 0.6s ease, filter 0.6s ease;
+  }
+  
+  .country.inactive {
+    fill: #e8ecf1;
+  }
+
+  .country.new-glow {
+    animation: pulseGlow 1.5s ease-in-out 3;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 152, 0, 0.4)); }
+    50% { filter: drop-shadow(0 0 10px rgba(255, 152, 0, 0.7)); }
+  }
+  
+  .country:hover {
+    stroke: #1a2a3a;
+    stroke-width: 1;
+    cursor: pointer;
+  }
+  
+  .tooltip {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid #d0d8e4;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    max-width: 200px;
+  }
+  
+  .tooltip .tt-name {
+    font-weight: 600;
+    color: #0d47a1;
+    margin-bottom: 4px;
+  }
+  
+  .tooltip .tt-detail {
+    color: #5a6a80;
+    line-height: 1.5;
+  }
+  
+  .timeline {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 10px 40px 10px;
+  }
+  
+  .year-display {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 700;
+    color: #1565c0;
+    margin-bottom: 4px;
+    transition: color 0.3s;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .nav-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #1565c0;
+    background: transparent;
+    color: #1565c0;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .nav-btn:hover {
+    background: #1565c0;
+    color: #ffffff;
+  }
+
+  .nav-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .nav-btn:disabled:hover {
+    background: transparent;
+    color: #1565c0;
+  }
+  
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: #d0d8e4;
+    outline: none;
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #1565c0;
+    cursor: pointer;
+    border: 2px solid #f5f7fa;
+    box-shadow: 0 0 6px rgba(21, 101, 192, 0.4);
+  }
+  
+  .year-ticks {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 52px 0;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  
+  .year-ticks span {
+    font-size: 0.6rem;
+    color: #7a8a9a;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    padding: 12px 20px 20px;
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: #5a6a80;
+  }
+  
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>FTTA Online</h1>
+  <div class="subtitle">Cumulative enrollment intensity by country, 2010–2026</div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-value" id="stat-enrollments">0</div>
+    <div class="stat-label">Enrollments</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" id="stat-users">0</div>
+    <div class="stat-label">Learners</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value highlight" id="stat-countries">0</div>
+    <div class="stat-label">Countries</div>
+  </div>
+</div>
+
+<div class="map-and-list">
+  <div id="map-container">
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+  <div class="country-list-panel" id="country-list-panel">
+    <div class="country-list-title">Active countries</div>
+    <div id="country-list"></div>
+  </div>
+</div>
+
+<div class="timeline">
+  <div class="year-display" id="year-display">2010</div>
+  <div class="slider-row">
+    <button class="nav-btn" id="prev-btn">&#9664;</button>
+    <input type="range" id="year-slider" min="2010" max="2026" value="2010" step="1">
+    <button class="nav-btn" id="next-btn">&#9654;</button>
+  </div>
+</div>
+<div class="year-ticks" id="year-ticks"></div>
+
+<div class="legend" style="flex-direction: column; align-items: center; gap: 6px;">
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <span style="font-size: 0.68rem; color: #5a6a80;">1</span>
+    <div id="legend-gradient" style="width: 260px; height: 14px; border-radius: 7px; border: 1px solid #c8d0dc;"></div>
+    <span style="font-size: 0.68rem; color: #5a6a80;" id="legend-max">4,000+</span>
+  </div>
+  <div style="display: flex; gap: 20px;">
+    <div class="legend-item">
+      <div class="legend-swatch" style="background: #e8ecf1; border: 1px solid #c8d0dc;"></div>
+      Not yet reached
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background: #ff9800; box-shadow: 0 0 4px rgba(239,108,0,0.4);"></div>
+      New this year
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {"2010":{"cumul_countries":["AUS","BRA","CAN","CHN","ETH","FRA","GBR","ISR","PRI","SGP","TWN","USA"],"new_countries":["AUS","BRA","CAN","CHN","ETH","FRA","GBR","ISR","PRI","SGP","TWN","USA"],"country_totals":{"USA":30,"CAN":6,"PRI":3,"BRA":1,"SGP":2,"FRA":1,"CHN":2,"ISR":1,"GBR":1,"AUS":3,"TWN":1,"ETH":1},"cumul_enrollments":52,"cumul_users":52,"cumul_country_count":12,"year_enrollments":52,"year_users":52,"year_country_count":12,"country_names":{"AUS":"Australia","BRA":"Brazil","CAN":"Canada","CHN":"China","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","ISR":"Israel","PRI":"Puerto Rico","SGP":"Singapore","TWN":"Taiwan","USA":"United States"},"new_country_names":{"AUS":"Australia","BRA":"Brazil","CAN":"Canada","CHN":"China","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","ISR":"Israel","PRI":"Puerto Rico","SGP":"Singapore","TWN":"Taiwan","USA":"United States"}},"2011":{"cumul_countries":["AUS","BRA","CAN","CHN","COL","ETH","FRA","GBR","GHA","GRC","HND","IDN","ISR","JPN","KOR","MYS","NOR","NZL","PAK","PHL","PRI","RUS","SGP","TWN","UKR","USA","VNM"],"new_countries":["COL","GHA","GRC","HND","IDN","JPN","KOR","MYS","NOR","NZL","PAK","PHL","RUS","UKR","VNM"],"country_totals":{"CAN":50,"USA":253,"PRI":13,"GHA":2,"ETH":17,"KOR":6,"ISR":5,"BRA":2,"UKR":1,"MYS":7,"AUS":10,"GBR":11,"PHL":2,"RUS":2,"SGP":5,"TWN":5,"FRA":3,"GRC":2,"IDN":3,"CHN":2,"JPN":2,"COL":2,"NOR":1,"VNM":1,"PAK":1,"NZL":2,"HND":1},"cumul_enrollments":411,"cumul_users":216,"cumul_country_count":27,"year_enrollments":359,"year_users":198,"year_country_count":26,"country_names":{"AUS":"Australia","BRA":"Brazil","CAN":"Canada","CHN":"China","COL":"Colombia","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","HND":"Honduras","IDN":"Indonesia","ISR":"Israel","JPN":"Japan","KOR":"South Korea","MYS":"Malaysia","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","TWN":"Taiwan","UKR":"Ukraine","USA":"United States","VNM":"Vietnam"},"new_country_names":{"COL":"Colombia","GHA":"Ghana","GRC":"Greece","HND":"Honduras","IDN":"Indonesia","JPN":"Japan","KOR":"South Korea","MYS":"Malaysia","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","RUS":"Russia","UKR":"Ukraine","VNM":"Vietnam"}},"2012":{"cumul_countries":["AUS","AUT","BEL","BRA","CAN","CHN","COL","ETH","FRA","GBR","GHA","GRC","HKG","HND","IDN","ISR","JPN","KOR","MYS","NOR","NZL","PAK","PHL","PRI","RUS","SGP","THA","TWN","UKR","USA","VNM","ZAF"],"new_countries":["AUT","BEL","HKG","THA","ZAF"],"country_totals":{"CAN":70,"USA":556,"PHL":9,"GRC":5,"PRI":19,"GHA":5,"ETH":24,"KOR":7,"AUS":26,"CHN":3,"GBR":28,"ISR":8,"BRA":2,"UKR":1,"SGP":11,"HKG":3,"MYS":10,"TWN":7,"JPN":9,"RUS":2,"ZAF":5,"NZL":6,"FRA":3,"IDN":3,"AUT":2,"COL":2,"THA":1,"BEL":1,"NOR":1,"VNM":1,"PAK":1,"HND":1},"cumul_enrollments":832,"cumul_users":369,"cumul_country_count":32,"year_enrollments":421,"year_users":229,"year_country_count":22,"country_names":{"AUS":"Australia","AUT":"Austria","BEL":"Belgium","BRA":"Brazil","CAN":"Canada","CHN":"China","COL":"Colombia","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","ISR":"Israel","JPN":"Japan","KOR":"South Korea","MYS":"Malaysia","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa"},"new_country_names":{"AUT":"Austria","BEL":"Belgium","HKG":"Hong Kong","THA":"Thailand","ZAF":"South Africa"}},"2013":{"cumul_countries":["AUS","AUT","BEL","BRA","CAN","CHL","CHN","COL","EGY","ESP","ETH","FRA","GBR","GHA","GRC","HKG","HND","IDN","ISR","JPN","KOR","MEX","MYS","NGA","NOR","NZL","PAK","PHL","PRI","RUS","SGP","THA","TWN","UKR","USA","VNM","ZAF"],"new_countries":["CHL","EGY","ESP","MEX","NGA"],"country_totals":{"CAN":101,"USA":865,"MEX":1,"PHL":12,"GRC":7,"AUS":43,"PRI":20,"GHA":7,"ETH":25,"KOR":10,"CHN":5,"GBR":51,"ISR":13,"AUT":12,"BRA":2,"UKR":1,"SGP":18,"HKG":3,"MYS":13,"TWN":8,"JPN":15,"RUS":3,"COL":6,"NGA":4,"HND":5,"ZAF":8,"NZL":9,"FRA":3,"CHL":4,"IDN":3,"BEL":2,"THA":1,"NOR":1,"EGY":1,"VNM":1,"PAK":1,"ESP":1},"cumul_enrollments":1285,"cumul_users":483,"cumul_country_count":37,"year_enrollments":453,"year_users":225,"year_country_count":28,"country_names":{"AUS":"Australia","AUT":"Austria","BEL":"Belgium","BRA":"Brazil","CAN":"Canada","CHL":"Chile","CHN":"China","COL":"Colombia","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","ISR":"Israel","JPN":"Japan","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa"},"new_country_names":{"CHL":"Chile","EGY":"Egypt","ESP":"Spain","MEX":"Mexico","NGA":"Nigeria"}},"2014":{"cumul_countries":["AUS","AUT","BEL","BRA","CAN","CHL","CHN","COL","EGY","ESP","ETH","FRA","GBR","GHA","GRC","HKG","HND","IDN","IND","ISR","JPN","KOR","MEX","MYS","NGA","NOR","NZL","PAK","PHL","PRI","RUS","SGP","THA","TWN","UKR","USA","VNM","ZAF"],"new_countries":["IND"],"country_totals":{"USA":1175,"CAN":126,"MEX":1,"GBR":68,"AUS":53,"PHL":12,"GRC":7,"PRI":23,"GHA":12,"ETH":25,"KOR":12,"IDN":7,"TWN":10,"CHN":5,"ISR":18,"AUT":21,"CHL":7,"BRA":2,"UKR":1,"SGP":24,"HKG":4,"MYS":18,"JPN":21,"RUS":3,"NGA":6,"COL":6,"HND":7,"ZAF":13,"NZL":10,"IND":4,"FRA":3,"BEL":2,"THA":1,"NOR":1,"EGY":1,"VNM":1,"PAK":1,"ESP":1},"cumul_enrollments":1713,"cumul_users":555,"cumul_country_count":38,"year_enrollments":428,"year_users":176,"year_country_count":21,"country_names":{"AUS":"Australia","AUT":"Austria","BEL":"Belgium","BRA":"Brazil","CAN":"Canada","CHL":"Chile","CHN":"China","COL":"Colombia","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","ISR":"Israel","JPN":"Japan","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa"},"new_country_names":{"IND":"India"}},"2015":{"cumul_countries":["AUS","AUT","BEL","BRA","CAN","CHL","CHN","COL","DEU","EGY","ESP","ETH","FRA","GBR","GHA","GRC","HKG","HND","IDN","IND","ISR","JPN","KOR","MEX","MYS","NGA","NOR","NZL","PAK","PHL","PRI","RUS","SGP","THA","TWN","UKR","USA","VNM","ZAF"],"new_countries":["DEU"],"country_totals":{"USA":1607,"CAN":151,"MEX":1,"NZL":23,"PHL":19,"HND":8,"GBR":85,"AUS":65,"GRC":8,"PRI":23,"GHA":14,"ETH":25,"KOR":12,"IDN":11,"TWN":12,"CHN":5,"AUT":30,"MYS":23,"ZAF":20,"ISR":22,"CHL":8,"BRA":2,"UKR":1,"SGP":32,"HKG":4,"JPN":26,"IND":6,"RUS":3,"NGA":8,"COL":6,"FRA":4,"BEL":2,"THA":3,"DEU":1,"NOR":1,"EGY":1,"VNM":1,"PAK":1,"ESP":1},"cumul_enrollments":2277,"cumul_users":700,"cumul_country_count":39,"year_enrollments":564,"year_users":268,"year_country_count":23,"country_names":{"AUS":"Australia","AUT":"Austria","BEL":"Belgium","BRA":"Brazil","CAN":"Canada","CHL":"Chile","CHN":"China","COL":"Colombia","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","ISR":"Israel","JPN":"Japan","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa"},"new_country_names":{"DEU":"Germany"}},"2016":{"cumul_countries":["AUS","AUT","BEL","BRA","CAN","CHL","CHN","COL","DEU","EGY","ESP","ETH","FRA","GBR","GHA","GRC","HKG","HND","IDN","IND","IRL","ISR","JPN","KAZ","KOR","MEX","MYS","NGA","NOR","NZL","PAK","PHL","PRI","RUS","SGP","THA","TWN","UKR","USA","VNM","ZAF"],"new_countries":["IRL","KAZ"],"country_totals":{"USA":1959,"CAN":169,"MEX":2,"NZL":44,"PHL":25,"HND":10,"GBR":100,"AUS":69,"SGP":47,"GRC":8,"KAZ":1,"PRI":23,"GHA":20,"ETH":25,"KOR":12,"TWN":22,"IDN":12,"CHN":5,"AUT":30,"JPN":30,"MYS":32,"ZAF":34,"ISR":24,"CHL":8,"BRA":2,"UKR":1,"HKG":4,"IND":6,"RUS":3,"NGA":9,"COL":6,"FRA":4,"BEL":2,"THA":3,"DEU":1,"NOR":1,"EGY":1,"VNM":1,"PAK":1,"ESP":1,"IRL":1},"cumul_enrollments":2761,"cumul_users":800,"cumul_country_count":41,"year_enrollments":484,"year_users":235,"year_country_count":19,"country_names":{"AUS":"Australia","AUT":"Austria","BEL":"Belgium","BRA":"Brazil","CAN":"Canada","CHL":"Chile","CHN":"China","COL":"Colombia","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","JPN":"Japan","KAZ":"Kazakhstan","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa"},"new_country_names":{"IRL":"Ireland","KAZ":"Kazakhstan"}},"2017":{"cumul_countries":["ARE","AUS","AUT","BEL","BLZ","BRA","CAN","CHL","CHN","COL","DEU","EGY","ESP","ETH","FRA","GBR","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","JPN","KAZ","KOR","MEX","MYS","NGA","NOR","NZL","PAK","PHL","PRI","RUS","SGP","THA","TWN","UKR","USA","VNM","ZAF"],"new_countries":["ARE","BLZ","GUM"],"country_totals":{"USA":2258,"ZAF":56,"CAN":197,"SGP":62,"MEX":6,"NZL":57,"PHL":33,"HND":11,"GBR":106,"AUS":72,"GRC":8,"KAZ":6,"PRI":23,"GHA":27,"ETH":26,"KOR":17,"TWN":25,"IDN":12,"DEU":13,"IND":8,"CHN":6,"AUT":30,"JPN":33,"MYS":33,"ISR":24,"CHL":8,"BRA":6,"UKR":1,"HKG":16,"RUS":3,"NGA":10,"COL":6,"NOR":2,"GUM":4,"FRA":4,"BEL":2,"THA":3,"ARE":1,"EGY":1,"VNM":1,"PAK":1,"ESP":1,"BLZ":1,"IRL":1},"cumul_enrollments":3225,"cumul_users":906,"cumul_country_count":44,"year_enrollments":464,"year_users":223,"year_country_count":27,"country_names":{"ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","CAN":"Canada","CHL":"Chile","CHN":"China","COL":"Colombia","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","JPN":"Japan","KAZ":"Kazakhstan","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa"},"new_country_names":{"ARE":"United Arab Emirates","BLZ":"Belize","GUM":"Guam"}},"2018":{"cumul_countries":["ARE","AUS","AUT","BEL","BLZ","BRA","BWA","CAN","CHL","CHN","COL","DEU","EGY","ESP","ETH","FRA","GBR","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","JPN","KAZ","KEN","KOR","MEX","MYS","NGA","NLD","NOR","NZL","PAK","PHL","PRI","RUS","SGP","THA","TWN","UKR","USA","VNM","ZAF"],"new_countries":["BWA","KEN","NLD"],"country_totals":{"MYS":41,"ZAF":97,"USA":2555,"CAN":211,"SGP":68,"MEX":6,"NZL":76,"PHL":42,"HND":13,"GBR":114,"AUS":79,"GRC":8,"KAZ":11,"PRI":25,"BWA":4,"GHA":34,"ETH":26,"KOR":18,"TWN":29,"IDN":12,"DEU":22,"IND":8,"NLD":3,"CHN":6,"AUT":30,"JPN":33,"ISR":24,"CHL":8,"BRA":13,"UKR":1,"HKG":22,"RUS":3,"NGA":13,"COL":6,"KEN":3,"NOR":2,"GUM":5,"BLZ":2,"FRA":4,"BEL":4,"THA":3,"ARE":1,"VNM":2,"EGY":1,"PAK":1,"ESP":1,"IRL":1},"cumul_enrollments":3701,"cumul_users":998,"cumul_country_count":47,"year_enrollments":476,"year_users":221,"year_country_count":26,"country_names":{"ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","BWA":"Botswana","CAN":"Canada","CHL":"Chile","CHN":"China","COL":"Colombia","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","JPN":"Japan","KAZ":"Kazakhstan","KEN":"Kenya","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NLD":"Netherlands","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa"},"new_country_names":{"BWA":"Botswana","KEN":"Kenya","NLD":"Netherlands"}},"2019":{"cumul_countries":["ARE","AUS","AUT","BEL","BLZ","BRA","BWA","CAN","CHL","CHN","COL","DEU","EGY","ESP","ETH","FRA","GBR","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","JPN","KAZ","KEN","KOR","MEX","MYS","NGA","NLD","NOR","NZL","PAK","PHL","PRI","RUS","SGP","THA","TWN","UGA","UKR","USA","VNM","ZAF"],"new_countries":["UGA"],"country_totals":{"MYS":48,"ZAF":138,"USA":2821,"CAN":237,"SGP":86,"MEX":6,"NZL":101,"PHL":51,"HND":14,"GBR":121,"AUS":86,"GRC":8,"KAZ":15,"PRI":25,"BWA":6,"GHA":37,"ETH":30,"KOR":20,"TWN":31,"BRA":19,"IDN":12,"DEU":27,"IND":8,"NLD":4,"CHN":6,"AUT":30,"BEL":10,"JPN":35,"ISR":24,"CHL":8,"UKR":1,"HKG":28,"RUS":3,"NGA":15,"COL":6,"KEN":5,"NOR":2,"GUM":5,"BLZ":3,"UGA":5,"FRA":4,"THA":3,"ARE":1,"VNM":2,"EGY":1,"PAK":1,"ESP":1,"IRL":1},"cumul_enrollments":4167,"cumul_users":1091,"cumul_country_count":48,"year_enrollments":466,"year_users":231,"year_country_count":26,"country_names":{"ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","BWA":"Botswana","CAN":"Canada","CHL":"Chile","CHN":"China","COL":"Colombia","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","JPN":"Japan","KAZ":"Kazakhstan","KEN":"Kenya","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NLD":"Netherlands","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UGA":"Uganda","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa"},"new_country_names":{"UGA":"Uganda"}},"2020":{"cumul_countries":["ALB","ARE","AUS","AUT","BEL","BLZ","BRA","BWA","CAN","CHL","CHN","COL","DEU","EGY","ESP","ETH","FRA","GBR","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","JPN","KAZ","KEN","KOR","MEX","MYS","NGA","NLD","NOR","NZL","PAK","PHL","PRI","RUS","SGP","THA","TWN","UGA","UKR","USA","VNM","ZAF"],"new_countries":["ALB"],"country_totals":{"MYS":54,"ZAF":163,"USA":3150,"CAN":254,"SGP":96,"MEX":6,"NZL":128,"PHL":71,"HND":14,"GBR":137,"AUS":102,"GRC":8,"KAZ":15,"PRI":26,"BWA":8,"GHA":40,"TWN":37,"ETH":30,"KOR":22,"BRA":24,"IDN":12,"DEU":30,"IND":8,"NLD":5,"CHN":7,"AUT":30,"BEL":18,"JPN":35,"ISR":25,"ALB":3,"CHL":8,"UKR":1,"HKG":28,"UGA":8,"FRA":7,"RUS":3,"NGA":16,"COL":6,"KEN":5,"NOR":2,"GUM":5,"BLZ":3,"THA":4,"ARE":1,"VNM":2,"EGY":1,"PAK":1,"ESP":1,"IRL":1},"cumul_enrollments":4684,"cumul_users":1248,"cumul_country_count":49,"year_enrollments":517,"year_users":284,"year_country_count":25,"country_names":{"ALB":"Albania","ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","BWA":"Botswana","CAN":"Canada","CHL":"Chile","CHN":"China","COL":"Colombia","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","JPN":"Japan","KAZ":"Kazakhstan","KEN":"Kenya","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NLD":"Netherlands","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UGA":"Uganda","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa"},"new_country_names":{"ALB":"Albania"}},"2021":{"cumul_countries":["ALB","ARE","AUS","AUT","BEL","BLZ","BRA","BWA","CAN","CHE","CHL","CHN","COL","CZE","DEU","EGY","ESP","ETH","FRA","GBR","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","ITA","JPN","KAZ","KEN","KOR","MEX","MYS","NGA","NLD","NOR","NZL","PAK","PHL","PRI","ROU","RUS","SGP","THA","TWN","UGA","UKR","USA","VNM","ZAF","ZWE"],"new_countries":["CHE","CZE","ITA","ROU","ZWE"],"country_totals":{"MYS":70,"ZAF":181,"USA":3449,"CAN":288,"SGP":103,"MEX":6,"NZL":142,"PHL":91,"HND":14,"GBR":204,"AUS":119,"GRC":10,"KAZ":15,"PRI":29,"BWA":10,"GHA":40,"TWN":42,"ETH":30,"KOR":22,"BRA":29,"IDN":13,"DEU":32,"IND":9,"NLD":5,"CHN":9,"AUT":30,"BEL":18,"JPN":35,"ISR":27,"ALB":3,"ZWE":17,"CHL":8,"UKR":1,"HKG":29,"UGA":11,"FRA":9,"RUS":3,"NGA":16,"COL":6,"KEN":5,"NOR":2,"GUM":5,"BLZ":4,"CHE":2,"ITA":2,"THA":4,"ARE":1,"VNM":2,"EGY":1,"CZE":1,"PAK":1,"ESP":1,"IRL":2,"ROU":1},"cumul_enrollments":5240,"cumul_users":1377,"cumul_country_count":54,"year_enrollments":556,"year_users":292,"year_country_count":29,"country_names":{"ALB":"Albania","ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","BWA":"Botswana","CAN":"Canada","CHE":"Switzerland","CHL":"Chile","CHN":"China","COL":"Colombia","CZE":"Czech Republic","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","ITA":"Italy","JPN":"Japan","KAZ":"Kazakhstan","KEN":"Kenya","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NLD":"Netherlands","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","ROU":"Romania","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UGA":"Uganda","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa","ZWE":"Zimbabwe"},"new_country_names":{"CHE":"Switzerland","CZE":"Czech Republic","ITA":"Italy","ROU":"Romania","ZWE":"Zimbabwe"}},"2022":{"cumul_countries":["ALB","ARE","AUS","AUT","BEL","BLZ","BRA","BWA","CAN","CHE","CHL","CHN","COL","CZE","DEU","EGY","ESP","ETH","FRA","GBR","GEO","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","ITA","JPN","KAZ","KEN","KOR","MEX","MYS","NGA","NLD","NOR","NZL","PAK","PHL","PRI","ROU","RUS","SGP","THA","TWN","UGA","UKR","USA","VNM","ZAF","ZWE"],"new_countries":["GEO"],"country_totals":{"MYS":79,"ZAF":197,"USA":3648,"CAN":319,"SGP":110,"MEX":6,"NZL":149,"PHL":109,"HND":14,"GHA":41,"BRA":32,"GBR":230,"AUS":129,"GRC":12,"KAZ":15,"PRI":29,"BWA":11,"TWN":47,"ETH":30,"KOR":22,"IDN":15,"DEU":34,"IND":11,"NLD":5,"CHN":12,"AUT":30,"BEL":18,"JPN":35,"ISR":27,"ALB":3,"ZWE":31,"CHL":8,"UKR":1,"HKG":29,"UGA":11,"FRA":10,"RUS":3,"NGA":18,"COL":6,"ROU":3,"KEN":5,"NOR":2,"GUM":5,"BLZ":4,"CHE":2,"GEO":2,"ITA":2,"THA":4,"ARE":1,"VNM":2,"EGY":1,"CZE":1,"PAK":1,"ESP":1,"IRL":2},"cumul_enrollments":5611,"cumul_users":1441,"cumul_country_count":55,"year_enrollments":371,"year_users":187,"year_country_count":23,"country_names":{"ALB":"Albania","ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","BWA":"Botswana","CAN":"Canada","CHE":"Switzerland","CHL":"Chile","CHN":"China","COL":"Colombia","CZE":"Czech Republic","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GEO":"Georgia","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","ITA":"Italy","JPN":"Japan","KAZ":"Kazakhstan","KEN":"Kenya","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NLD":"Netherlands","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","ROU":"Romania","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UGA":"Uganda","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa","ZWE":"Zimbabwe"},"new_country_names":{"GEO":"Georgia"}},"2023":{"cumul_countries":["ALB","ARE","AUS","AUT","BEL","BLZ","BRA","BWA","CAN","CHE","CHL","CHN","COL","CZE","DEU","EGY","ESP","ETH","FRA","GBR","GEO","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","ITA","JPN","KAZ","KEN","KOR","MEX","MYS","NGA","NLD","NOR","NZL","PAK","PHL","PRI","ROU","RUS","SGP","THA","TWN","UGA","UKR","USA","VNM","ZAF","ZWE"],"new_countries":[],"country_totals":{"MYS":82,"ZAF":211,"USA":3849,"CAN":342,"SGP":114,"MEX":6,"NZL":154,"PHL":116,"HND":14,"GHA":41,"BRA":33,"GBR":251,"AUS":135,"GRC":13,"KAZ":15,"PRI":29,"BWA":11,"TWN":47,"ETH":32,"KOR":22,"IDN":15,"DEU":37,"IND":11,"NLD":5,"CHN":15,"AUT":30,"BEL":21,"JPN":36,"ISR":29,"ALB":3,"ROU":8,"ZWE":34,"CHL":8,"UKR":1,"HKG":29,"UGA":11,"FRA":10,"RUS":3,"NGA":18,"COL":6,"KEN":5,"NOR":2,"GUM":5,"BLZ":4,"CHE":2,"GEO":2,"ITA":2,"THA":4,"ARE":1,"VNM":2,"EGY":1,"CZE":1,"PAK":1,"ESP":1,"IRL":2},"cumul_enrollments":5923,"cumul_users":1498,"cumul_country_count":55,"year_enrollments":312,"year_users":172,"year_country_count":19,"country_names":{"ALB":"Albania","ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","BWA":"Botswana","CAN":"Canada","CHE":"Switzerland","CHL":"Chile","CHN":"China","COL":"Colombia","CZE":"Czech Republic","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GEO":"Georgia","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","ITA":"Italy","JPN":"Japan","KAZ":"Kazakhstan","KEN":"Kenya","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NLD":"Netherlands","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","ROU":"Romania","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UGA":"Uganda","UKR":"Ukraine","USA":"United States","VNM":"Vietnam","ZAF":"South Africa","ZWE":"Zimbabwe"},"new_country_names":{}},"2024":{"cumul_countries":["ALB","ARE","AUS","AUT","BEL","BLZ","BRA","BWA","CAN","CHE","CHL","CHN","COL","CZE","DEU","EGY","ESP","ETH","FRA","GBR","GEO","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","ITA","JPN","KAZ","KEN","KOR","MEX","MYS","NGA","NLD","NOR","NZL","PAK","PHL","PRI","ROU","RUS","SGP","THA","TWN","UGA","UKR","USA","VCT","VNM","ZAF","ZWE"],"new_countries":["VCT"],"country_totals":{"MYS":85,"ZAF":243,"USA":4081,"CAN":371,"SGP":117,"DEU":48,"MEX":6,"NZL":163,"PHL":124,"HND":14,"GHA":41,"BRA":33,"GBR":257,"AUS":144,"GRC":13,"KAZ":15,"PRI":29,"BWA":17,"TWN":50,"ETH":33,"KOR":22,"IDN":15,"IND":11,"NLD":5,"CHN":19,"AUT":30,"ROU":22,"BEL":21,"JPN":36,"ISR":29,"ALB":3,"ZWE":34,"CHL":8,"UKR":1,"HKG":29,"UGA":13,"FRA":12,"RUS":3,"NGA":18,"COL":6,"KEN":5,"NOR":2,"GUM":5,"BLZ":4,"CHE":2,"IRL":5,"GEO":2,"ITA":2,"THA":4,"ARE":1,"VNM":2,"EGY":1,"VCT":1,"CZE":1,"PAK":1,"ESP":1},"cumul_enrollments":6301,"cumul_users":1591,"cumul_country_count":56,"year_enrollments":378,"year_users":226,"year_country_count":19,"country_names":{"ALB":"Albania","ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","BWA":"Botswana","CAN":"Canada","CHE":"Switzerland","CHL":"Chile","CHN":"China","COL":"Colombia","CZE":"Czech Republic","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GEO":"Georgia","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","ITA":"Italy","JPN":"Japan","KAZ":"Kazakhstan","KEN":"Kenya","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NLD":"Netherlands","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","ROU":"Romania","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UGA":"Uganda","UKR":"Ukraine","USA":"United States","VCT":"St. Vincent","VNM":"Vietnam","ZAF":"South Africa","ZWE":"Zimbabwe"},"new_country_names":{"VCT":"St. Vincent"}},"2025":{"cumul_countries":["ALB","ARE","AUS","AUT","BEL","BLZ","BRA","BWA","CAN","CHE","CHL","CHN","COL","CZE","DEU","EGY","ESP","ETH","FRA","GBR","GEO","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","ITA","JPN","KAZ","KEN","KOR","MEX","MYS","NGA","NLD","NOR","NZL","PAK","PHL","PRI","ROU","RUS","SGP","THA","TWN","UGA","UKR","USA","VCT","VNM","ZAF","ZWE"],"new_countries":[],"country_totals":{"MYS":88,"ZAF":286,"USA":4305,"CAN":402,"SGP":121,"GBR":267,"DEU":50,"MEX":6,"NZL":166,"PHL":127,"HND":14,"IRL":9,"GHA":42,"BRA":33,"AUS":158,"GRC":13,"KAZ":15,"PRI":29,"BWA":29,"TWN":52,"ETH":33,"KOR":27,"IDN":16,"IND":24,"NLD":5,"CHN":24,"AUT":30,"ROU":23,"BEL":21,"JPN":36,"ISR":29,"ALB":3,"ZWE":34,"CHL":8,"UKR":1,"HKG":29,"UGA":14,"FRA":12,"RUS":3,"NGA":23,"COL":6,"KEN":5,"NOR":2,"GUM":5,"BLZ":4,"CHE":2,"GEO":2,"ITA":3,"THA":6,"ARE":1,"VNM":2,"EGY":1,"VCT":1,"CZE":1,"PAK":1,"ESP":1},"cumul_enrollments":6693,"cumul_users":1680,"cumul_country_count":56,"year_enrollments":392,"year_users":213,"year_country_count":23,"country_names":{"ALB":"Albania","ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","BWA":"Botswana","CAN":"Canada","CHE":"Switzerland","CHL":"Chile","CHN":"China","COL":"Colombia","CZE":"Czech Republic","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GEO":"Georgia","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","ITA":"Italy","JPN":"Japan","KAZ":"Kazakhstan","KEN":"Kenya","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NLD":"Netherlands","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","ROU":"Romania","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UGA":"Uganda","UKR":"Ukraine","USA":"United States","VCT":"St. Vincent","VNM":"Vietnam","ZAF":"South Africa","ZWE":"Zimbabwe"},"new_country_names":{}},"2026":{"cumul_countries":["ALB","ARE","AUS","AUT","BEL","BLZ","BRA","BWA","CAN","CHE","CHL","CHN","COL","CZE","DEU","EGY","ESP","ETH","FRA","GBR","GEO","GHA","GRC","GUM","HKG","HND","IDN","IND","IRL","ISR","ITA","JPN","KAZ","KEN","KOR","MEX","MYS","NGA","NLD","NOR","NZL","PAK","PHL","PRI","ROU","RUS","SGP","THA","TWN","UGA","UKR","USA","VCT","VNM","ZAF","ZWE"],"new_countries":[],"country_totals":{"MYS":90,"ZAF":296,"USA":4423,"CAN":420,"SGP":128,"GBR":277,"DEU":50,"MEX":6,"NZL":167,"PHL":127,"HND":14,"IRL":9,"GHA":43,"BRA":33,"AUS":162,"TWN":55,"GRC":13,"KAZ":15,"PRI":29,"BWA":32,"ETH":33,"KOR":28,"IND":134,"IDN":16,"NLD":5,"CHN":29,"AUT":30,"ROU":23,"BEL":21,"JPN":38,"ISR":29,"ALB":3,"ZWE":34,"CHL":8,"UKR":1,"HKG":29,"UGA":15,"FRA":12,"NGA":29,"RUS":3,"COL":6,"THA":9,"KEN":5,"NOR":2,"GUM":5,"ESP":3,"BLZ":4,"CHE":2,"ITA":5,"GEO":2,"ARE":1,"VNM":2,"EGY":1,"VCT":1,"CZE":1,"PAK":1},"cumul_enrollments":7003,"cumul_users":1779,"cumul_country_count":56,"year_enrollments":310,"year_users":193,"year_country_count":20,"country_names":{"ALB":"Albania","ARE":"United Arab Emirates","AUS":"Australia","AUT":"Austria","BEL":"Belgium","BLZ":"Belize","BRA":"Brazil","BWA":"Botswana","CAN":"Canada","CHE":"Switzerland","CHL":"Chile","CHN":"China","COL":"Colombia","CZE":"Czech Republic","DEU":"Germany","EGY":"Egypt","ESP":"Spain","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","GEO":"Georgia","GHA":"Ghana","GRC":"Greece","GUM":"Guam","HKG":"Hong Kong","HND":"Honduras","IDN":"Indonesia","IND":"India","IRL":"Ireland","ISR":"Israel","ITA":"Italy","JPN":"Japan","KAZ":"Kazakhstan","KEN":"Kenya","KOR":"South Korea","MEX":"Mexico","MYS":"Malaysia","NGA":"Nigeria","NLD":"Netherlands","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","PRI":"Puerto Rico","ROU":"Romania","RUS":"Russia","SGP":"Singapore","THA":"Thailand","TWN":"Taiwan","UGA":"Uganda","UKR":"Ukraine","USA":"United States","VCT":"St. Vincent","VNM":"Vietnam","ZAF":"South Africa","ZWE":"Zimbabwe"},"new_country_names":{}}};
+const NAMES = {"AUS":"Australia","BRA":"Brazil","CAN":"Canada","CHN":"China","ETH":"Ethiopia","FRA":"France","GBR":"United Kingdom","ISR":"Israel","PRI":"Puerto Rico","SGP":"Singapore","TWN":"Taiwan","USA":"United States","COL":"Colombia","GHA":"Ghana","GRC":"Greece","HND":"Honduras","IDN":"Indonesia","JPN":"Japan","KOR":"South Korea","MYS":"Malaysia","NOR":"Norway","NZL":"New Zealand","PAK":"Pakistan","PHL":"Philippines","RUS":"Russia","UKR":"Ukraine","VNM":"Vietnam","AUT":"Austria","BEL":"Belgium","HKG":"Hong Kong","THA":"Thailand","ZAF":"South Africa","CHL":"Chile","EGY":"Egypt","ESP":"Spain","MEX":"Mexico","NGA":"Nigeria","IND":"India","DEU":"Germany","IRL":"Ireland","KAZ":"Kazakhstan","ARE":"United Arab Emirates","BLZ":"Belize","GUM":"Guam","BWA":"Botswana","KEN":"Kenya","NLD":"Netherlands","UGA":"Uganda","ALB":"Albania","CHE":"Switzerland","CZE":"Czech Republic","ITA":"Italy","ROU":"Romania","ZWE":"Zimbabwe","GEO":"Georgia","VCT":"St. Vincent"};
+
+const years = Object.keys(DATA).map(Number).sort((a,b) => a - b);
+let currentYear = years[0];
+
+// Year ticks
+const ticksEl = document.getElementById("year-ticks");
+years.forEach(y => {
+  const s = document.createElement("span");
+  s.textContent = y.toString().slice(2);
+  ticksEl.appendChild(s);
+});
+
+// Map setup
+const width = 1100, height = 500;
+const svg = d3.select("#map-container")
+  .append("svg")
+  .attr("viewBox", `0 0 ${width} ${height}`)
+  .attr("preserveAspectRatio", "xMidYMid meet");
+
+// Define diagonal stripe pattern for new countries
+const defs = svg.append("defs");
+const pattern = defs.append("pattern")
+  .attr("id", "new-country-stripes")
+  .attr("width", 6)
+  .attr("height", 6)
+  .attr("patternUnits", "userSpaceOnUse")
+  .attr("patternTransform", "rotate(45)");
+pattern.append("rect")
+  .attr("width", 6)
+  .attr("height", 6)
+  .attr("fill", "#bbdefb");
+pattern.append("rect")
+  .attr("width", 2.5)
+  .attr("height", 6)
+  .attr("fill", "#1565c0");
+
+const projection = d3.geoNaturalEarth1()
+  .scale(185)
+  .translate([width / 2, height / 2 + 20]);
+
+const path = d3.geoPath().projection(projection);
+const tooltip = document.getElementById("tooltip");
+
+// Color scale: log-based blue gradient
+// Lightest active blue to deepest blue
+const colorScale = d3.scaleLog()
+  .domain([1, 5000])
+  .range(["#1a3a5c", "#0d47a1"])
+  .clamp(true);
+
+// Use d3 sequential scale for a smooth blue ramp
+function getCountryColor(count) {
+  if (!count || count <= 0) return "#e8ecf1";
+  // Log scale from 1 to ~5000, mapped to a wide color ramp
+  const t = Math.log(count + 1) / Math.log(5001); // 0 to 1
+  // Light mode: pale blue → medium blue → deep blue → very dark navy
+  if (t < 0.25) {
+    // pale sky blue to light blue
+    const s = t / 0.25;
+    return `rgb(${Math.round(190 - s * 40)}, ${Math.round(220 - s * 20)}, ${Math.round(245 - s * 15)})`;
+  } else if (t < 0.5) {
+    // light blue to medium blue
+    const s = (t - 0.25) / 0.25;
+    return `rgb(${Math.round(150 - s * 60)}, ${Math.round(200 - s * 50)}, ${Math.round(230 - s * 20)})`;
+  } else if (t < 0.75) {
+    // medium blue to rich blue
+    const s = (t - 0.5) / 0.25;
+    return `rgb(${Math.round(90 - s * 55)}, ${Math.round(150 - s * 60)}, ${Math.round(210 - s * 30)})`;
+  } else {
+    // rich blue to deep dark navy
+    const s = (t - 0.75) / 0.25;
+    return `rgb(${Math.round(35 - s * 22)}, ${Math.round(90 - s * 45)}, ${Math.round(180 - s * 50)})`;
+  }
+}
+
+// Build legend gradient
+const legendGrad = document.getElementById("legend-gradient");
+const stops = [];
+for (let i = 0; i <= 20; i++) {
+  const count = Math.pow(5000, i / 20);
+  stops.push(getCountryColor(count));
+}
+legendGrad.style.background = `linear-gradient(to right, ${stops.join(", ")})`;
+
+// Load world data
+d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(world => {
+  const countries = topojson.feature(world, world.objects.countries);
+
+  // Map numeric IDs to ISO3
+  const idToIso3 = {};
+  countries.features.forEach(f => {
+    const numId = f.id || f.properties.name;
+    f.properties.iso3 = numericToIso3(numId);
+  });
+
+  svg.selectAll("path.country")
+    .data(countries.features)
+    .enter()
+    .append("path")
+    .attr("class", "country inactive")
+    .attr("d", path)
+    .attr("data-iso3", d => d.properties.iso3)
+    .on("mouseover", function(event, d) {
+      const iso3 = d.properties.iso3;
+      const name = NAMES[iso3] || d.properties.name || iso3;
+      const yearData = DATA[currentYear.toString()];
+      const total = yearData?.country_totals?.[iso3];
+
+      if (total) {
+        const isNew = yearData.new_countries.includes(iso3);
+        tooltip.innerHTML = `
+          <div class="tt-name">${name}</div>
+          <div class="tt-detail">
+            ${total.toLocaleString()} enrollments (cumulative)<br>
+            ${isNew ? '<span style="color:#f57c00; font-weight:600">★ New in ' + currentYear + '</span>' : 'Joined before ' + currentYear}
+          </div>`;
+        tooltip.style.opacity = 1;
+      }
+    })
+    .on("mousemove", function(event) {
+      const rect = document.getElementById("map-container").getBoundingClientRect();
+      tooltip.style.left = (event.clientX - rect.left + 14) + "px";
+      tooltip.style.top = (event.clientY - rect.top - 10) + "px";
+    })
+    .on("mouseout", function() {
+      tooltip.style.opacity = 0;
+    });
+
+  updateMap(currentYear);
+});
+
+function numericToIso3(id) {
+  const map = {
+    "004":"AFG","008":"ALB","012":"DZA","020":"AND","024":"AGO","028":"ATG","032":"ARG",
+    "036":"AUS","040":"AUT","044":"BHS","048":"BHR","050":"BGD","051":"ARM","052":"BRB",
+    "056":"BEL","064":"BTN","068":"BOL","070":"BIH","072":"BWA","076":"BRA","084":"BLZ",
+    "090":"SLB","096":"BRN","100":"BGR","104":"MMR","108":"BDI","112":"BLR","116":"KHM",
+    "120":"CMR","124":"CAN","140":"CAF","144":"LKA","148":"TCD","152":"CHL","156":"CHN",
+    "158":"TWN","170":"COL","174":"COM","178":"COG","180":"COD","188":"CRI","191":"HRV",
+    "192":"CUB","196":"CYP","203":"CZE","204":"BEN","208":"DNK","214":"DOM","218":"ECU",
+    "222":"SLV","226":"GNQ","231":"ETH","232":"ERI","233":"EST","234":"FRO","242":"FJI",
+    "246":"FIN","250":"FRA","258":"PYF","262":"DJI","266":"GAB","268":"GEO","270":"GMB",
+    "275":"PSE","276":"DEU","288":"GHA","296":"KIR","300":"GRC","308":"GRD","320":"GTM",
+    "324":"GIN","328":"GUY","332":"HTI","340":"HND","344":"HKG","348":"HUN","352":"ISL",
+    "356":"IND","360":"IDN","364":"IRN","368":"IRQ","372":"IRL","376":"ISR","380":"ITA",
+    "384":"CIV","388":"JAM","392":"JPN","398":"KAZ","400":"JOR","404":"KEN","408":"PRK",
+    "410":"KOR","414":"KWT","417":"KGZ","418":"LAO","422":"LBN","426":"LSO","428":"LVA",
+    "430":"LBR","434":"LBY","440":"LTU","442":"LUX","450":"MDG","454":"MWI","458":"MYS",
+    "462":"MDV","466":"MLI","470":"MLT","478":"MRT","480":"MUS","484":"MEX","496":"MNG",
+    "498":"MDA","499":"MNE","504":"MAR","508":"MOZ","512":"OMN","516":"NAM","520":"NRU",
+    "524":"NPL","528":"NLD","540":"NCL","554":"NZL","558":"NIC","562":"NER","566":"NGA",
+    "578":"NOR","586":"PAK","591":"PAN","598":"PNG","600":"PRY","604":"PER","608":"PHL",
+    "616":"POL","620":"PRT","630":"PRI","634":"QAT","642":"ROU","643":"RUS","646":"RWA",
+    "659":"KNA","662":"LCA","670":"VCT","674":"SMR","678":"STP","682":"SAU","686":"SEN",
+    "688":"SRB","694":"SLE","702":"SGP","703":"SVK","704":"VNM","705":"SVN","706":"SOM",
+    "710":"ZAF","716":"ZWE","724":"ESP","728":"SSD","729":"SDN","740":"SUR","748":"SWZ",
+    "752":"SWE","756":"CHE","760":"SYR","762":"TJK","764":"THA","768":"TGO","776":"TON",
+    "780":"TTO","784":"ARE","788":"TUN","792":"TUR","795":"TKM","800":"UGA","804":"UKR",
+    "807":"MKD","818":"EGY","826":"GBR","834":"TZA","840":"USA","854":"BFA","858":"URY",
+    "860":"UZB","862":"VEN","887":"YEM","894":"ZMB",
+    "-99":"CYN","10":"ATA"
+  };
+  return map[id] || id;
+}
+
+function updateMap(year) {
+  currentYear = year;
+  const data = DATA[year.toString()];
+  if (!data) return;
+  
+  // Update stats with counting animation
+  animateValue("stat-enrollments", data.cumul_enrollments);
+  animateValue("stat-users", data.cumul_users);
+  animateValue("stat-countries", data.cumul_country_count);
+  
+  document.getElementById("year-display").textContent = year;
+  document.getElementById("year-slider").value = year;
+  
+  // Update map — fill by enrollment count
+  d3.selectAll(".country")
+    .attr("class", d => {
+      const iso3 = d.properties.iso3;
+      const isActive = data.cumul_countries.includes(iso3);
+      const isNew = data.new_countries.includes(iso3);
+      let cls = "country";
+      if (!isActive) cls += " inactive";
+      if (isNew) cls += " new-glow";
+      return cls;
+    })
+    .style("fill", d => {
+      const iso3 = d.properties.iso3;
+      if (!data.cumul_countries.includes(iso3)) return null; // let CSS .inactive handle it
+      const count = data.country_totals[iso3] || 0;
+      if (data.new_countries.includes(iso3)) return "#ff9800"; // orange for new
+      return getCountryColor(count);
+    })
+    .style("filter", d => {
+      const iso3 = d.properties.iso3;
+      if (data.new_countries.includes(iso3)) return "drop-shadow(0 0 6px rgba(255, 152, 0, 0.5))";
+      if (data.cumul_countries.includes(iso3)) return "none";
+      return null;
+    });
+  
+  // Update country list panel (new countries only)
+  const listEl = document.getElementById("country-list");
+  const titleEl = document.querySelector(".country-list-title");
+  titleEl.textContent = "New in " + year;
+
+  if (data.new_countries.length > 0) {
+    const sorted = data.new_countries.slice().sort((a, b) => {
+      return (NAMES[a] || a).localeCompare(NAMES[b] || b);
+    });
+    listEl.innerHTML = sorted.map(c => {
+      return `<div class="country-list-item">${NAMES[c] || c}</div>`;
+    }).join("");
+  } else {
+    listEl.innerHTML = '<div class="no-new-message">No new countries added</div>';
+  }
+
+  if (typeof updateNavButtons === "function") updateNavButtons();
+}
+
+function animateValue(id, target) {
+  const el = document.getElementById(id);
+  const current = parseInt(el.textContent.replace(/,/g, "")) || 0;
+  const diff = target - current;
+  const steps = 30;
+  const stepSize = diff / steps;
+  let step = 0;
+  
+  const interval = setInterval(() => {
+    step++;
+    if (step >= steps) {
+      el.textContent = target.toLocaleString();
+      clearInterval(interval);
+    } else {
+      el.textContent = Math.round(current + stepSize * step).toLocaleString();
+    }
+  }, 16);
+}
+
+
+
+// New code for remote clicker: Final Instructions: Replace everything from // Slider to the end of the file with the code below:
+
+// Slider
+document.getElementById("year-slider").addEventListener("input", function() {
+  updateMap(parseInt(this.value));
+});
+// Nav buttons
+function updateNavButtons() {
+  const idx = years.indexOf(currentYear);
+  document.getElementById("prev-btn").disabled = (idx <= 0);
+  document.getElementById("next-btn").disabled = (idx >= years.length - 1);
+}
+document.getElementById("prev-btn").addEventListener("click", function() {
+  const idx = years.indexOf(currentYear);
+  if (idx > 0) updateMap(years[idx - 1]);
+});
+document.getElementById("next-btn").addEventListener("click", function() {
+  const idx = years.indexOf(currentYear);
+  if (idx < years.length - 1) updateMap(years[idx + 1]);
+});
+// ======================
+// PRESENTATION CLICKER SUPPORT
+// ======================
+document.addEventListener("keydown", function(e) {
+  // Prevent page scrolling when using arrow keys or space
+  if (["ArrowRight", "ArrowLeft", " ", "PageUp", "PageDown"].includes(e.key)) {
+    e.preventDefault();
+  }
+  if (e.key === "ArrowRight" || e.key === " ") {
+    // Right arrow or Spacebar = Next year (most common clicker behavior)
+    const nextBtn = document.getElementById("next-btn");
+    if (!nextBtn.disabled) nextBtn.click();
+    
+  } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+    // Left arrow or PageUp = Previous year
+    const prevBtn = document.getElementById("prev-btn");
+    if (!prevBtn.disabled) prevBtn.click();
+    
+  } else if (e.key === "PageDown") {
+    // Some clickers use PageDown for forward
+    const nextBtn = document.getElementById("next-btn");
+    if (!nextBtn.disabled) nextBtn.click();
+  }
+});
+// Fullscreen toggle (press F)
+document.addEventListener("keydown", function(e) {
+  if (e.key.toLowerCase() === "f") {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
+  }
+});
+// ======================
+// FULLSCREEN HINT (appears in bottom-right)
+// ======================
+const hint = document.createElement("div");
+hint.style.cssText = `
+  position: fixed;
+  bottom: 18px;
+  right: 22px;
+  background: rgba(26, 42, 58, 0.85);
+  color: #fff;
+  font-size: 0.72rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  z-index: 1000;
+  opacity: 0.9;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+`;
+hint.innerHTML = 'Press <strong>F</strong> for fullscreen • Clicker ready';
+document.body.appendChild(hint);
+// Hide hint after 6 seconds (or you can keep it visible)
+setTimeout(() => {
+  hint.style.opacity = "0";
+  setTimeout(() => hint.remove(), 800);
+}, 6000);
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
