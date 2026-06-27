@@ -1,0 +1,38 @@
+name: Update FTTA map data
+
+# Runs automatically every Wednesday at 3:00 PM US Central,
+# and can also be triggered manually from the Actions tab.
+# Cron is in UTC (no daylight-saving handling): "0 20 * * 3" = 20:00 UTC Wed
+# = 3:00 PM CDT (summer). In winter (CST) this becomes 2:00 PM; change to
+# "0 21 * * 3" if you want it to stay 3:00 PM during standard time.
+on:
+  schedule:
+    - cron: "0 20 * * 3"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # allows the job to commit the refreshed map back
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Refresh map data (headless)
+        env:
+          FTTA_FEED_URL: ${{ secrets.FTTA_FEED_URL }}
+        run: python -c "import update_ftta_maps as u; u.main_cli()"
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "Auto-update FTTA map data"
+          git push
